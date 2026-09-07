@@ -22,6 +22,11 @@ def download_AUR_Pkg(PkgName):
   OpenFile.extractall(path=USER_CACHE_BASE)
   OpenFile.close()
   subprocess.run(["rm", "-r", FileName])
+  Ans = input("Would you like to read package build? y/N ")
+  if Ans == "y":
+        PkgBuild_Path = os.path.join(USER_CACHE_BASE, PkgName, "PKGBUILD")
+        with open(PkgBuild_Path, "r") as file_stream:
+         print(file_stream.read())   
  except urllib.error.HTTPError as e:
    if e.code == 404:
      print("This package could not be found")
