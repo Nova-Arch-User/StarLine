@@ -26,7 +26,8 @@ def download_AUR_Pkg(PkgName):
   if Ans == "y":
         PkgBuild_Path = os.path.join(USER_CACHE_BASE, PkgName, "PKGBUILD")
         with open(PkgBuild_Path, "r") as file_stream:
-         print(file_stream.read())   
+         print(file_stream.read())
+        return True   
  except urllib.error.HTTPError as e:
    if e.code == 404:
      print("This package could not be found")
@@ -35,13 +36,17 @@ def download_AUR_Pkg(PkgName):
      print(f"Server error, could not connect: {e.code} {e.reason}") 
      sys.exit()
 
-
 if __name__ =="__main__":
  TargetPackage = input("Please enter PkgName: ").strip()
- if TargetPackage:
-   download_AUR_Pkg(TargetPackage)
-   ExtractedFolderPath = os.path.join(USER_CACHE_BASE, TargetPackage)
-   BuildPackage(ExtractedFolderPath)
-   print("Download complete!")
- else:
-  print("Please enter a valid package name")
+while True:
+ try:
+   if TargetPackage:
+    download_AUR_Pkg(TargetPackage)
+    ExtractedFolderPath = os.path.join(USER_CACHE_BASE, TargetPackage)
+    BuildPackage(ExtractedFolderPath)
+    print("Download complete!")
+   else:
+    print("Please enter a valid package name")
+ except KeyboardInterrupt:
+   print("Terminated")
+   break
