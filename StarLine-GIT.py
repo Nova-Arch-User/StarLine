@@ -21,7 +21,7 @@ def download_AUR_Pkg(PkgName):
   OpenFile = tarfile.open(FileName)
   OpenFile.extractall(path=USER_CACHE_BASE)
   OpenFile.close()
-  subprocess.run(["rm", "-r", FileName])
+  os.remove(FileName)
   Ans = input("Would you like to read package build? y/N ")
   if Ans == "y":
         PkgBuild_Path = os.path.join(USER_CACHE_BASE, PkgName, "PKGBUILD")
@@ -36,6 +36,7 @@ def download_AUR_Pkg(PkgName):
      print(f"Server error, could not connect: {e.code} {e.reason}") 
      sys.exit()
 
+
 if __name__ =="__main__":
  TargetPackage = input("Please enter PkgName: ").strip()
 while True:
@@ -45,6 +46,7 @@ while True:
     ExtractedFolderPath = os.path.join(USER_CACHE_BASE, TargetPackage)
     BuildPackage(ExtractedFolderPath)
     print("Download complete!")
+    break
    else:
     print("Please enter a valid package name")
  except KeyboardInterrupt:
