@@ -30,13 +30,11 @@ def download_AUR_Pkg(PkgName):
     with urllib.request.urlopen(UrlD) as response:
      JsonString = response.read().decode('utf-8')
      PkgData = json.loads(JsonString)
-        # Use round brackets () for .get()
     if PkgData.get("resultcount", 0) > 0:
         package_list = PkgData["results"]
         if package_list:
             Package_info = package_list[0]
             
-            # Safely grab lists from the package info dictionary
             Depends = Package_info.get("Depends", [])
             MakeDepends = Package_info.get("MakeDepends", [])
             
