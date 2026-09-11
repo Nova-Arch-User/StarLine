@@ -5,13 +5,14 @@ import tarfile
 import os
 import sys
 import json
+from urllib.parse import quote
 
 def BuildPackage(DirPath):
   subprocess.run(["makepkg", "-si"], cwd=DirPath, check=True)
 
 USER_CACHE_BASE = os.path.join(os.path.expanduser("~"), ".cache", "StarLine")
 
-def download_AUR_Pkg(PkgName):
+def download_AUR_Pkg(PkgName, TopLvl=True):
  try:
   pkg_cache_dir = os.path.join(USER_CACHE_BASE, PkgName)
   os.makedirs(pkg_cache_dir, exist_ok=True)
@@ -24,9 +25,10 @@ def download_AUR_Pkg(PkgName):
   PackageToCheck = [PkgName]
   FoundDependencies = []
   while len(PackageToCheck) > 0:
+    Seen = {PkgName}
     CurrentPkg = PackageToCheck.pop()
     FoundDependencies.append(CurrentPkg)
-    UrlD = UrlD = f"https://aur.archlinux.org/rpc/v5/search/{PkgName}?by=name-desc"
+    UrlD = f"https://aur.archlinux.org/rpc/v5/info/{CurrentPkg}"
     with urllib.request.urlopen(UrlD) as response:
      JsonString = response.read().decode('utf-8')
      PkgData = json.loads(JsonString)
@@ -37,25 +39,32 @@ def download_AUR_Pkg(PkgName):
             
             Depends = Package_info.get("Depends", [])
             MakeDepends = Package_info.get("MakeDepends", [])
-            
             Dependencies = Depends + MakeDepends
-            PackageToCheck.extend(Dependencies)
+            NewDeps = [d for d in Dependencies if d not in Seen]   # <-- dedup
+            Seen.update(NewDeps)
+            PackageToCheck.extend(NewDeps)
             print(f"Package '{CurrentPkg}' needs: {Dependencies}")
     else:
         print(f"No depen found for {CurrentPkg}")
 
-            
-  if PkgName in FoundDependencies:
-      FoundDependencies.remove(PkgName)      
-  for PkgName in FoundDependencies:
-          download_AUR_Pkg(PkgName)
   OpenFile.close()
   os.remove(FileName)
+              
+  if PkgName in FoundDependencies:
+      FoundDependencies.remove(PkgName)      
+  for Dep in FoundDependencies:
+            download_AUR_Pkg(Dep, TopLvl=False)
+  
 
  except urllib.error.HTTPError as e:
     if e.code == 404:
-      print("This package could not be found")
-      sys.exit()
+      
+      if TopLvl:
+            print("This package could not be found")
+            sys.exit()
+      else:
+            print(f"Skipping '{PkgName}': not on AUR, probably an official repo package")
+            return
     else:
       print(f"Server error, could not connect: {e.code} {e.reason}") 
       sys.exit()
