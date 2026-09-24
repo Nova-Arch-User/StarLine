@@ -11,7 +11,8 @@ from collections import defaultdict, deque
 
 def BuildPackage(DirPath):
     
-     command = ["makepkg", "-si", "--noconfirm"]
+     command = ["makepkg", "-si"]
+     subprocess.run("pwd")
      subprocess.run(command, cwd=DirPath, check=True)
 
 USER_CACHE_BASE = os.path.join(os.path.expanduser("~"), ".cache", "StarLine")
@@ -35,9 +36,6 @@ class KahnGraph:
 
     all_pkgs = set(list(self.graph.keys()) + list(self.InDegree.keys()))
 
-    for pkg in all_pkgs:
-     for NextNode in self.graph[pkg]:
-       indegree[NextNode] += 1
     for pkg in all_pkgs:
      if indegree[pkg] == 0:
        queue.append(pkg)
@@ -129,10 +127,11 @@ def DownloadDependencies(PkgName, Kahn):
                Package_info = package_list[0]
                Depends = Package_info.get("Depends", [])
                MakeDepends = Package_info.get("MakeDepends", [])
+               OptDepens = Package_info.get("OptDepends")
                
                Depends = Cleaner(Depends)
                MakeDepends = Cleaner(MakeDepends)
-               Dependencies = Depends + MakeDepends
+               Dependencies = Depends + MakeDepends + OptDepens
                
                NewDeps = [d for d in Dependencies if d not in Seen and d] 
                for d in NewDeps:
