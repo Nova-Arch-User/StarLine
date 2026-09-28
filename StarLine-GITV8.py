@@ -127,11 +127,11 @@ def DownloadDependencies(PkgName, Kahn):
                Package_info = package_list[0]
                Depends = Package_info.get("Depends", [])
                MakeDepends = Package_info.get("MakeDepends", [])
-               OptDepens = Package_info.get("OptDepends")
+               OptDepends = Package_info.get("OptDepends", [])
                
                Depends = Cleaner(Depends)
                MakeDepends = Cleaner(MakeDepends)
-               Dependencies = Depends + MakeDepends + OptDepens
+               Dependencies = Depends + MakeDepends + OptDepends
                
                NewDeps = [d for d in Dependencies if d not in Seen and d] 
                for d in NewDeps:
