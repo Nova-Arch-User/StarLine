@@ -3,7 +3,6 @@ import urllib.request
 import urllib.error
 import tarfile
 import os
-import sys
 import json
 import re  
 import shutil
@@ -29,7 +28,7 @@ class KahnGraph:
 
    
    def KahnSort(self):
-    N = len(self.graph)
+    
     indegree = self.InDegree
     result = []
     queue = deque()
@@ -50,7 +49,7 @@ class KahnGraph:
 
 def download_AUR_Pkg(PkgName, IsMainPackage=True):
  AnsB = "y"
-  
+ 
  try:
   pkg_cache_dir = os.path.join(USER_CACHE_BASE, PkgName)
   if os.path.exists(pkg_cache_dir):
@@ -67,7 +66,6 @@ def download_AUR_Pkg(PkgName, IsMainPackage=True):
        
        Ans = input("Would you like to read package build? y/N ")
        if Ans == "y":
-      
         with tarfile.open(FileName, "r:gz") as OpenFile:
          AllFiles = OpenFile.getnames()
          for File in AllFiles:
@@ -75,11 +73,10 @@ def download_AUR_Pkg(PkgName, IsMainPackage=True):
              OpenFile.extract(File, USER_CACHE_BASE)
              PkgBuild_Path = os.path.join(USER_CACHE_BASE, File)
              break   
-        with open(PkgBuild_Path, "r") as file_stream:
-         print(file_stream.read())
+         with open(PkgBuild_Path, "r") as file_stream:
+          print(file_stream.read())
          AnsB = input("Would you like to procede? y/N ")
          if AnsB != "y":
-            
             return False
   OpenFile = tarfile.open(FileName)
   OpenFile.extractall(path=USER_CACHE_BASE)
@@ -87,16 +84,12 @@ def download_AUR_Pkg(PkgName, IsMainPackage=True):
   os.remove(FileName)
   ExtractedFolderPath = os.path.join(USER_CACHE_BASE, PkgName)
   BuildPackage(ExtractedFolderPath)
-
+  return True
  except urllib.error.HTTPError as e:
     if e.code == 404:
       if IsMainPackage:
             print("This package could not be found")
             return False
-            
-      else:
-            print(f"Skipping '{PkgName}': not on AUR, probably an official repo package")
-            return
     else:
       print(f"Server error, could not connect: {e.code} {e.reason}") 
       return False
@@ -104,9 +97,11 @@ def download_AUR_Pkg(PkgName, IsMainPackage=True):
 def DownloadDependencies(PkgName, Kahn):
    PackageToCheck = [PkgName]
    FoundDependencies = []
-   Seen = {PkgName}
+   Seen = set()
    while len(PackageToCheck) > 0:
        CurrentPkg = PackageToCheck.pop()
+       if CurrentPkg in Seen:
+         continue
        Seen.add(CurrentPkg)
        Arch_Repo_Check = subprocess.run(["pacman", "-Si", CurrentPkg], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
        if Arch_Repo_Check.returncode == 0:
@@ -123,7 +118,8 @@ def DownloadDependencies(PkgName, Kahn):
        if PkgData.get("resultcount", 0) > 0:
            package_list = PkgData["results"]
            if package_list:
-               FoundDependencies.append(CurrentPkg)
+               
+
                Package_info = package_list[0]
                Depends = Package_info.get("Depends", [])
                MakeDepends = Package_info.get("MakeDepends", [])
@@ -135,7 +131,6 @@ def DownloadDependencies(PkgName, Kahn):
                
                NewDeps = [d for d in Dependencies if d not in Seen and d] 
                for d in NewDeps:
-                  Seen.add(d)
                   Kahn.DrawEdge(d, CurrentPkg)
                PackageToCheck.extend(NewDeps)
                
@@ -165,16 +160,19 @@ if __name__ =="__main__":
  TargetPackage = input("Please enter PkgName: ").strip()
  while True:
   Kahn = KahnGraph()
+  Comp = True
   try:
+   
    if TargetPackage:
-     depenChoice = input("Would you like to download the AUR dependencies? Y/n").strip()
-     if depenChoice == "Y":
+      
       FoundDepends = DownloadDependencies(TargetPackage, Kahn)
       IndexedDepends = {Idx: Value for Idx, Value in enumerate(FoundDepends)}
       FinalDepenList = Kahn.KahnSort() 
-      FinalDepenList.append(TargetPackage)
+      
       for Depend in FinalDepenList:
-         Is_Installed = subprocess.run(["pacman", "-Qq", Depend], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+         if Depend == TargetPackage:
+           continue
+         Is_Installed = subprocess.run(["pacman", "-T", Depend], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
          if Is_Installed.returncode == 0:
             print(f"Skipped, dependency: {Depend} already installed")
             pass
@@ -182,17 +180,26 @@ if __name__ =="__main__":
             try: 
              subprocess.run(["sudo", "pacman", "-S", "--noconfirm", Depend], check=True)
              print(f"Dependency: {Depend} installed from official Arch repo!")
-            except: 
-             is_target = (Depend == TargetPackage)
-             download_AUR_Pkg(Depend, is_target)
-             
-     if download_AUR_Pkg:
-      print("Download and installation complete!")
-      break
-     else:
-      break
+            except:
+               is_target = (Depend == TargetPackage)
+               if is_target == True:
+                 continue
+
+               Comp = download_AUR_Pkg(Depend, is_target)
+               if not Comp:
+                print(f"Failed to build AUR package: {Depend}")
+                break
+
+
+      if Comp:
+       Comp = download_AUR_Pkg(TargetPackage, IsMainPackage=True)
+      if Comp:
+       print("Download and installation complete!")
+       break
+   
    else:
      print("Please enter a valid package name")
+     break
   except KeyboardInterrupt:
    print("Terminated")
    break
